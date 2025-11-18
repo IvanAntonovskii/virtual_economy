@@ -62,3 +62,20 @@ def sample_user_data():
 def sample_product_data():
     """Пример данных товара"""
     return {"name": "Test Product", "description": "Test Description", "price": 100, "type": "consumable"}
+
+
+@pytest.fixture
+async def test_session(test_engine):
+    """Тестовая сессия базы данных"""
+    async_session = async_sessionmaker(
+        test_engine,
+        class_=AsyncSession,
+        expire_on_commit=False
+    )
+
+    session = async_session()
+    try:
+        yield session
+        await session.rollback()
+    finally:
+        await session.close()

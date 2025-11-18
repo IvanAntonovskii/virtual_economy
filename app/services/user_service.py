@@ -37,8 +37,8 @@ class UserService:
             # Подтверждение транзакции
             await self.transaction_repo.update_status(transaction.id, "completed")
 
-            await cache_manager.set_user_inventory(user_id, data)
-            result = await cache_manager.get_user_inventory(user_id)
+            # ИНВАЛИДАЦИЯ КЭША вместо неправильного вызова
+            await cache_manager.delete(f"user_inventory:{user_id}")
 
             return {
                 "user_id": user_id,
