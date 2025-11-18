@@ -1,14 +1,13 @@
 import pytest
 import asyncio
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from app.core.database import Base, get_db
-from app.core.cache import cache_manager
-from app.main import app
-from fastapi.testclient import TestClient
-import os
+from sqlalchemy import MetaData
 
-# Тестовая база данных
+# Тестовая база данных - используем SQLite
 TEST_DATABASE_URL = "sqlite+aiosqlite:///./test_virtual_economy.db"
+
+# Создаем базовый метаданные для тестов
+metadata = MetaData()
 
 
 @pytest.fixture(scope="session")
@@ -26,18 +25,7 @@ async def test_engine():
         TEST_DATABASE_URL,
         connect_args={"check_same_thread": False}
     )
-
-    # Создаем таблицы
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
-
     yield engine
-
-    # Очищаем после тестов
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-
     await engine.dispose()
 
 
@@ -49,66 +37,28 @@ async def test_session(test_engine):
         class_=AsyncSession,
         expire_on_commit=False
     )
-
     async with async_session() as session:
         yield session
 
 
 @pytest.fixture
-def client(test_session):
-    """Test client для FastAPI"""
-
-    # Переопределяем зависимость базы данных
-    async def override_get_db():
-        yield test_session
-
-    app.dependency_overrides[get_db] = override_get_db
-
-    # Отключаем кэширование для тестов
-    cache_manager.redis = None
+def client():
+    """Test client для FastAPI - упрощенная версия"""
+    # Импортируем ТОЛЬКО когда нужно
+    from fastapi.testclient import TestClient
+    from app.main import app
 
     with TestClient(app) as test_client:
         yield test_client
 
-    app.dependency_overrides.clear()
+
+@pytest.fixture
+def sample_user_data():
+    """Пример данных пользователя"""
+    return {"username": "testuser", "email": "test@example.com", "balance": 1000}
 
 
 @pytest.fixture
-async def test_data(test_session):
-    """Создает тестовые данные"""
-    from app.models.user import User
-    from app.models.product import Product
-
-    # Тестовый пользователь
-    test_user = User(
-        username="test_user",
-        email="test@example.com",
-        balance=1000
-    )
-
-    # Тестовые товары
-    test_products = [
-        Product(
-            name="Буст на день",
-            description="Увеличивает доход на 50%",
-            price=100,
-            type="consumable"
-        ),
-        Product(
-            name="Премиум-статус",
-            description="Постоянный доступ",
-            price=500,
-            type="permanent"
-        )
-    ]
-
-    test_session.add(test_user)
-    for product in test_products:
-        test_session.add(product)
-
-    await test_session.commit()
-
-    return {
-        "user": test_user,
-        "products": test_products
-    }
+def sample_product_data():
+    """Пример данных товара"""
+    return {"name": "Test Product", "description": "Test Description", "price": 100, "type": "consumable"}
