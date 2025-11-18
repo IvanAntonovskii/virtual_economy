@@ -47,12 +47,14 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install pytest pytest-asyncio httpx
+        pip install pytest pytest-asyncio pytest-cov  # явно установить тестовые зависимости
+        pip install -r requirements-test.txt
+        pip install pytest-cov
 
     - name: Run tests
       env:
-        DATABASE_URL: postgresql+asyncpg://user:password@localhost:5432/virtual_economy
-        REDIS_HOST: localhost
-        REDIS_PORT: 6379
+        DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/test_db
+        REDIS_URL: redis://localhost:6379/0
       run: |
         pytest -v --cov=app --cov-report=xml
 
