@@ -1,13 +1,9 @@
 import pytest
 import asyncio
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy import MetaData
 
 # Тестовая база данных - используем SQLite
 TEST_DATABASE_URL = "sqlite+aiosqlite:///./test_virtual_economy.db"
-
-# Создаем базовый метаданные для тестов
-metadata = MetaData()
 
 
 @pytest.fixture(scope="session")
@@ -18,22 +14,6 @@ def event_loop():
     loop.close()
 
 
-@pytest.fixture
-async def test_session(test_engine):
-    """Тестовая сессия базы данных"""
-    async_session = async_sessionmaker(
-        test_engine,
-        class_=AsyncSession,
-        expire_on_commit=False
-    )
-
-    async with async_session() as session:
-        try:
-            yield session
-        finally:
-            await session.rollback()
-
-
 @pytest.fixture(scope="session")
 async def test_engine():
     """Тестовый engine для базы данных"""
@@ -41,7 +21,18 @@ async def test_engine():
         TEST_DATABASE_URL,
         connect_args={"check_same_thread": False}
     )
+
+    # Импортируем и создаем таблицы
+    from app.core.database import Base
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
+
     yield engine
+
+    # Очищаем после тестов
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
     await engine.dispose()
 
 
@@ -53,16 +44,25 @@ async def test_session(test_engine):
         class_=AsyncSession,
         expire_on_commit=False
     )
-    async with async_session() as session:
+
+    # Создаем сессию и возвращаем ее
+    session = async_session()
+    try:
         yield session
+    finally:
+        await session.rollback()
+        await session.close()
 
 
 @pytest.fixture
 def client():
     """Test client для FastAPI - упрощенная версия"""
-    # Импортируем ТОЛЬКО когда нужно
     from fastapi.testclient import TestClient
     from app.main import app
+
+    # Отключаем кэш для тестов
+    from app.core.cache import cache_manager
+    cache_manager.redis = None
 
     with TestClient(app) as test_client:
         yield test_client
@@ -72,27 +72,3 @@ def client():
 def sample_user_data():
     """Пример данных пользователя"""
     return {"username": "testuser", "email": "test@example.com", "balance": 1000}
-
-
-@pytest.fixture
-def sample_product_data():
-    """Пример данных товара"""
-    return {"name": "Test Product", "description": "Test Description", "price": 100, "type": "consumable"}
-
-
-@pytest.fixture
-async def test_session(test_engine):
-    """Тестовая сессия базы данных"""
-    async_session = async_sessionmaker(
-        test_engine,
-        class_=AsyncSession,
-        expire_on_commit=False
-    )
-
-    async with async_session() as session:
-        try:
-            yield session
-        finally:
-            await session.rollback()
-
-
