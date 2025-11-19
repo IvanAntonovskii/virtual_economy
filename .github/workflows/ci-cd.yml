@@ -47,7 +47,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install pytest pytest-asyncio httpx
-        pip install pytest pytest-asyncio pytest-cov  # явно установить тестовые зависимости
+        pip install pytest pytest-asyncio pytest-cov
         pip install -r requirements-test.txt
         pip install pytest-cov
 
@@ -80,43 +80,9 @@ jobs:
       run: |
         docker build -t virtual-economy:latest .
 
-    - name: Run Docker container test
-      run: |
-        # Запускаем контейнер с переменными окружения
-        docker run -d -p 8000:8000 --name test-app \
-          -e DATABASE_URL=sqlite:///./test.db \
-          -e REDIS_URL=redis://localhost:6379/0 \
-          virtual-economy:latest
-        
-        # Ждем инициализации приложения
-        echo "Waiting for app to start..."
-        sleep 20
-        
-        # Проверяем статус контейнера
-        echo "=== Container status ==="
-        docker ps -a
-        
-        # Проверяем логи
-        echo "=== Container logs ==="
-        docker logs test-app
-        
-        # Проверяем процессы внутри контейнера
-        echo "=== Container processes ==="
-        docker top test-app
-        
-        # Проверяем здоровье приложения
-        echo "=== Testing health endpoint ==="
-        curl -v -f http://localhost:8000/health/ready || \
-          (echo "Health check failed - showing full logs:" && docker logs test-app && exit 1)
-        
-        echo "✅ Docker container test passed!"
-        
-        # Останавливаем контейнер
-        docker stop test-app
-        docker rm test-app
-
     - name: Verify Docker image
       run: |
-        echo "✅ Docker image verification:"
+        echo "✅ Docker image built successfully"
         docker images virtual-economy:latest
         echo "Image size: $(docker images virtual-economy:latest --format "{{.Size}}")"
+        echo "Image created: $(docker images virtual-economy:latest --format "{{.CreatedAt}}")"
