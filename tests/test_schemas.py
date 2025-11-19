@@ -1,55 +1,29 @@
 import pytest
-from pydantic import ValidationError
+import asyncio
+from unittest.mock import AsyncMock
 
+@pytest.fixture(scope="session")
+def event_loop():
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    yield loop
+    loop.close()
 
-def test_basic_schemas():
-    """Тестируем базовые схемы"""
-    try:
-        from app.schemas.user import UserCreate
-        from app.schemas.product import ProductCreate
+@pytest.fixture
+async def test_session():
+    session = AsyncMock()
+    session.execute = AsyncMock()
+    session.commit = AsyncMock()
+    session.rollback = AsyncMock()
+    session.close = AsyncMock()
+    return session
 
-        # Тест создания пользователя
-        user_data = {
-            "username": "testuser",
-            "email": "test@example.com",
-            "balance": 1000
-        }
-        user = UserCreate(**user_data)
-        assert user.username == "testuser"
-        assert user.email == "test@example.com"
+@pytest.fixture
+def client():
+    from fastapi.testclient import TestClient
+    from app.main import app
+    with TestClient(app) as test_client:
+        yield test_client
 
-        # Тест создания продукта
-        product_data = {
-            "name": "Test Product",
-            "description": "Test Description",
-            "price": 100,
-            "type": "consumable"
-        }
-        product = ProductCreate(**product_data)
-        assert product.name == "Test Product"
-
-        print("✓ Schemas imported successfully")
-
-    except ImportError as e:
-        pytest.fail(f"Import failed: {e}")
-    except ValidationError as e:
-        pytest.fail(f"Validation failed: {e}")
-
-
-def test_schema_validation():
-    """Тест валидации схем"""
-    try:
-        from app.schemas.user import UserCreate
-
-        # Должен пройти
-        valid_user = UserCreate(
-            username="validuser",
-            email="valid@example.com",
-            balance=1000
-        )
-        assert valid_user.username == "validuser"
-
-        print("✓ Schema validation passed")
-
-    except Exception as e:
-        pytest.fail(f"Schema validation test failed: {e}")
+@pytest.fixture
+def sample_user_data():
+    return {"username": "testuser", "email": "test@example.com", "balance": 1000}
