@@ -1,10 +1,6 @@
 import pytest
 import asyncio
 from unittest.mock import AsyncMock
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-
-# Test database - using SQLite
-TEST_DATABASE_URL = "sqlite+aiosqlite:///./test_virtual_economy.db"
 
 
 @pytest.fixture(scope="session")
@@ -15,48 +11,8 @@ def event_loop():
     loop.close()
 
 
-@pytest.fixture(scope="session")
-async def test_engine():
-    """Test database engine"""
-    engine = create_async_engine(
-        TEST_DATABASE_URL,
-        connect_args={"check_same_thread": False}
-    )
-
-    # Import and create tables
-    from app.core.database import Base
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
-
-    yield engine
-
-    # Cleanup after tests
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-    await engine.dispose()
-
-
 @pytest.fixture
-async def test_session(test_engine):
-    """Test database session"""
-    async_session = async_sessionmaker(
-        test_engine,
-        class_=AsyncSession,
-        expire_on_commit=False
-    )
-
-    # Create session and return it
-    async with async_session() as session:
-        try:
-            yield session
-        finally:
-            await session.rollback()
-            await session.close()
-
-
-@pytest.fixture
-async def mock_session():
+async def test_session():
     """Mock session for unit tests"""
     session = AsyncMock()
     session.execute = AsyncMock()
