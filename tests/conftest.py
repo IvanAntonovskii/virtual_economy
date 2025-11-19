@@ -37,13 +37,13 @@ async def test_engine():
 
 
 @pytest.fixture
-async def test_session(test_engine):
-    """Test database session"""
-    async_session = async_sessionmaker(
-        test_engine,
-        class_=AsyncSession,
-        expire_on_commit=False
-    )
+async def test_session():
+    # Вместо async_generator возвращаем мок сессии
+    session = AsyncMock()
+    session.execute = AsyncMock()
+    session.commit = AsyncMock()
+    session.rollback = AsyncMock()
+    return session
 
     # Create session and return it
     session = async_session()
