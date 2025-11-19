@@ -85,4 +85,4 @@ jobs:
         echo "✅ Docker image built successfully"
         docker images virtual-economy:latest
         echo "Image size: $(docker images virtual-economy:latest --format "{{.Size}}")"
-        echo "Image created: $(docker images virtual-economy:latest --format "{{.CreatedAt}}")"
+        echo "✅ CI/CD pipeline completed successfully"
