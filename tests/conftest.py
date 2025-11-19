@@ -1,5 +1,6 @@
 import pytest
 import asyncio
+from unittest.mock import AsyncMock
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 
 # Test database - using SQLite
@@ -37,21 +38,32 @@ async def test_engine():
 
 
 @pytest.fixture
-async def test_session():
-    # Вместо async_generator возвращаем мок сессии
+async def test_session(test_engine):
+    """Test database session"""
+    async_session = async_sessionmaker(
+        test_engine,
+        class_=AsyncSession,
+        expire_on_commit=False
+    )
+
+    # Create session and return it
+    async with async_session() as session:
+        try:
+            yield session
+        finally:
+            await session.rollback()
+            await session.close()
+
+
+@pytest.fixture
+async def mock_session():
+    """Mock session for unit tests"""
     session = AsyncMock()
     session.execute = AsyncMock()
     session.commit = AsyncMock()
     session.rollback = AsyncMock()
+    session.close = AsyncMock()
     return session
-
-    # Create session and return it
-    session = async_session()
-    try:
-        yield session
-    finally:
-        await session.rollback()
-        await session.close()
 
 
 @pytest.fixture

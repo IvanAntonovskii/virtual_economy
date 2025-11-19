@@ -70,13 +70,15 @@ class TestProductService:
             await service.purchase_product(1, 1)
 
     async def test_purchase_product_not_found(self, test_session):
-        # Создаем мок сессии
-        mock_session = AsyncMock()
+        # Создаем моки для ВСЕХ репозиториев
+        mock_user_repo = AsyncMock()
+        mock_user_repo.get_by_id.return_value = MagicMock()  # Добавляем мок пользователя
 
         mock_product_repo = AsyncMock()
         mock_product_repo.get_by_id.return_value = None
 
-        service = ProductService(mock_session)  # Используем mock_session вместо test_session
+        service = ProductService(test_session)  # Используем test_session, но с полными моками
+        service.user_repo = mock_user_repo  # Добавляем мок user_repo
         service.product_repo = mock_product_repo
 
         with pytest.raises(ProductNotFoundError):

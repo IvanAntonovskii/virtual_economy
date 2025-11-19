@@ -51,10 +51,15 @@ class TestUserService:
             await service.add_funds(999, 100, "test_key")
 
     async def test_add_funds_duplicate_operation(self, test_session):
+        # Создаем моки для ВСЕХ репозиториев
+        mock_user_repo = AsyncMock()
+        mock_user_repo.get_by_id.return_value = MagicMock()  # Добавляем мок пользователя
+
         mock_transaction_repo = AsyncMock()
         mock_transaction_repo.get_by_idempotency_key.return_value = MagicMock()
 
         service = UserService(test_session)
+        service.user_repo = mock_user_repo  # Добавляем мок user_repo
         service.transaction_repo = mock_transaction_repo
 
         with pytest.raises(DuplicateOperationError):
